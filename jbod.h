@@ -3,10 +3,17 @@
 #include <stdint.h>
 
 // Fill the below values with right values
-#define JBOD_NUM_DISKS            1
-#define JBOD_DISK_SIZE            1
-#define JBOD_BLOCK_SIZE           1
-#define JBOD_NUM_BLOCKS_PER_DISK  1
+//byte-addressed
+#define JBOD_NUM_DISKS            16 //from README
+#define JBOD_BLOCK_SIZE           256 //from README 
+#define JBOD_NUM_BLOCKS_PER_DISK  1048576/(JBOD_BLOCK_SIZE*JBOD_NUM_DISKS) //math eq from README
+#define JBOD_DISK_SIZE            JBOD_BLOCK_SIZE * JBOD_NUM_BLOCKS_PER_DISK
+//bit widths for reference (all from README)
+#define DISK_ID_WIDTH 4
+#define BLOCK_ID_WIDTH 8
+#define CMD_ID_WIDTH 8
+#define RESERVED_WIDTH 12
+
 
 typedef enum {
   JBOD_MOUNT,
