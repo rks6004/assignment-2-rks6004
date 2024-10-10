@@ -4,6 +4,13 @@
 #include <stdint.h>
 #include "jbod.h"
 
+enum mdadm_rear_error_codes {
+    OUT_OF_BOUNDS = -1, 
+    EXCESS_BYTES = -2,
+    ARRAY_UNMOUNTED = -3,
+    BAD_ARGS = -4
+};
+
 /* Return 1 on success and -1 on failure */
 int mdadm_mount(void);
 

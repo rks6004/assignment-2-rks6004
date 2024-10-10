@@ -34,8 +34,44 @@ int mdadm_unmount(void) {
   return 1;
 }
 
-int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
+uint32_t mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
   //Complete your code here
-  return 0;
-}
+  if (read_len > 1024) {
+    return EXCESS_BYTES;
+  }
+  if (read_len < 0 || *read_buf == NULL) {
+    return BAD_ARGS;
+  }
+  if (jbod_error == JBOD_ALREADY_UNMOUNTED) {
+    return ARRAY_UNMOUNTED;
+  }
+  uint32_t end_addr = start_addr + read_len - 1;
+  int start_disk = disk_locator(start_addr);
+  int end_disk = disk_locator(end_addr);
+  
+  int start_block = block_locator(start_addr);
+  int end_block = block_locator(end_addr);
 
+  uint8_t buffer_tracker = read_buf;
+  uint32_t addr_tracker = start_addr;
+  
+  for (int d = start_disk; d <= end_disk; d++) {
+      //only filling out necessary aspects of opcode
+      uint32_t seek_code = d << (sizeof(seek_code) - DISK_ID_WIDTH) 
+      + JBOD_SEEK_TO_DISK << (CMD_ID_WIDTH + RESERVED_WIDTH); 
+      jbod_operation(seek_code, NULL);
+      
+      for (int b = block_locator(addr_tracker))
+  }
+
+  return read_len; 
+}
+//disk locator to use in opcode population
+int disk_locator(uint32_t addr) {
+  return (addr / JBOD_DISK_SIZE);
+}
+//block locator to use in opcode population
+int block_locator(uint32_t addr) {
+  int relative_addr = addr - (disk_locator(addr) * JBOD_DISK_SIZE);
+  return (relative_addr / JBOD_BLOCK_SIZE);
+}
