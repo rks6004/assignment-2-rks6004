@@ -104,18 +104,21 @@ int test_read_before_mount() {
 int test_read_invalid_parameters() {
   printf("running %s: ", __func__);
 
-  mdadm_mount();
+  //printf("\nmounting returned: %d\n", mdadm_mount());
 
   bool success = false;
   uint8_t buf1[SIZE];
   uint32_t addr = 0x1fffffff;
-  if (mdadm_read(addr, SIZE, buf1) != -1) {
+  int read_op_return = mdadm_read(addr, SIZE, buf1);
+  if (read_op_return != -1) {
+    printf("read operation returned: %d\n", read_op_return);
     printf("failed: read should fail on an out-of-bound linear address but it did not.\n");
     goto out;
   }
 
   addr = 1048570;
   if (mdadm_read(addr, SIZE, buf1) != -1) {
+    printf("got: %d\n",mdadm_read(addr, SIZE, buf1));
     printf("failed: read should fail if it goes beyond the end of the linear address space but it did not.\n");
     goto out;
   }

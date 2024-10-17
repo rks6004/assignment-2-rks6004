@@ -4,7 +4,8 @@
 #include <stdint.h>
 #include "jbod.h"
 
-enum mdadm_rear_error_codes {
+enum mdadm_read_error_codes {
+    ZERO_LENGTH_READ = 0,
     OUT_OF_BOUNDS = -1, 
     EXCESS_BYTES = -2,
     ARRAY_UNMOUNTED = -3,
