@@ -6,37 +6,42 @@
 
 int mdadm_mount(void) {
   // Complete your code here
-  //printf("\ncurrent JBOD status before mounting: %d\n", jbod_error);
+  printf("\ncurrent JBOD status before mounting: %d\n", jbod_error);
   if (jbod_error == JBOD_ALREADY_MOUNTED) {
     //only need to fill out "op" field since all other fields ignored for mounting
-    //printf("current JBOD status after failed mounting: %d\n", jbod_error);
+    printf("current JBOD status after failed mounting: %d\n", jbod_error);
     return -1;
   }
   int jbod_op_return =  jbod_operation((uint32_t)(JBOD_MOUNT << RESERVED_WIDTH), NULL);
-  //printf("jbod_operation return value during mdam_mount func: %d\n", jbod_op_return);
+  printf("jbod_operation return value during jbod_mount func: %d\n", jbod_op_return);
   if (jbod_op_return == -1) {
-    //printf("current JBOD status after failed mounting: %d\n", jbod_error);
+    printf("current JBOD status after failed mounting: %d\n", jbod_error);
     return -1;  
   }
-  //printf("current JBOD status after successful mounting: %d\n", jbod_error);
+  //unexpected behavior where, if having jbod_error = JBOD_ALREADY_MOUNTED
+  //and successful jbod mounting using jbod_operation completed
+  //jbod_error would not change to JBOD_NO_ERROR
+  //have to rectify manually?
+  jbod_error = JBOD_NO_ERROR;
+  printf("current JBOD status after successful mounting: %d\n", jbod_error);
   return 1;
 }
 
 int mdadm_unmount(void) {
   //Complete your code here
-  //printf("\ncurrent JBOD status before unmounting: %d\n", jbod_error);
+  printf("\ncurrent JBOD status before unmounting: %d\n", jbod_error);
   if (jbod_error == JBOD_UNMOUNTED || jbod_error == JBOD_ALREADY_UNMOUNTED) {
     //only need to fill out "op" field since all other fields ignored for mounting
-    //printf("current JBOD status after failed unmounting: %d\n", jbod_error);
+    printf("current JBOD status after failed unmounting: %d\n", jbod_error);
     return -1;
   }
   int jbod_op_return =  jbod_operation((uint32_t)(JBOD_UNMOUNT << RESERVED_WIDTH), NULL);
-  //printf("jbod_operation return value during mdam_unmount func: %d\n", jbod_op_return);
+  printf("jbod_operation return value during mdam_unmount func: %d\n", jbod_op_return);
   if (jbod_op_return == -1) {
-    //printf("current JBOD status after failed unmounting: %d\n", jbod_error);
+    printf("current JBOD status after failed unmounting: %d\n", jbod_error);
     return -1;  
   }
-  //printf("current JBOD status after successful unmounting: %d\n", jbod_error);
+  printf("current JBOD status after successful unmounting: %d\n", jbod_error);
   return 1;
 }
 
@@ -98,9 +103,11 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
   }
   //reading beyond a single block
   else {
-    uint32_t end_addr = start_addr + read_len - 1;
+    uint32_t end_addr = start_addr + read_len;
+    printf("start address: %d, end address calculated as: %d\n", start_addr, end_addr);
     int start_disk = disk_locator(start_addr);
     int end_disk = disk_locator(end_addr);
+    printf("starting at disk: %d and ending at disk: %d\n", start_disk, end_disk);
     int bytes_read = 0;
     uint32_t addr_tracker = start_addr;
     for (int d = start_disk; d <= end_disk; d++) {

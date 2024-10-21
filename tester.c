@@ -163,8 +163,9 @@ int test_read_within_block() {
 
   bool success = false;
   uint8_t out[SIZE];
-  if (mdadm_read(0, SIZE, out) != SIZE) {
-    printf("failed: read failed\n");
+  int result = mdadm_read(0, SIZE, out);
+  if (result != SIZE) {
+    printf("failed: read failed with result: %d\n", result);
     return 0;
   }
 
@@ -317,6 +318,7 @@ int test_read_across_disks() {
 
   int rc = mdadm_mount();
   if (rc != 1) {
+    printf("jbod error on mounting fail: %d", jbod_error);
     printf("failed: mount should succeed on an unmounted system but it failed.\n");
     return 0;
   }
