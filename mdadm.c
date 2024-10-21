@@ -4,12 +4,17 @@
 #include "mdadm.h"
 #include "jbod.h"
 
+#define TRUE 1
+#define FALSE 0
+
+int mdadm_mounted = FALSE;
+
 int mdadm_mount(void) {
   // Complete your code here
   printf("\ncurrent JBOD status before mounting: %d\n", jbod_error);
-  if (jbod_error == JBOD_ALREADY_MOUNTED) {
+  if (mdadm_mounted) {
     //only need to fill out "op" field since all other fields ignored for mounting
-    printf("current JBOD status after failed mounting: %d\n", jbod_error);
+    printf("current JBOD status after array already mounted: %d\n", jbod_error);
     return -1;
   }
   int jbod_op_return =  jbod_operation((uint32_t)(JBOD_MOUNT << RESERVED_WIDTH), NULL);
@@ -18,21 +23,17 @@ int mdadm_mount(void) {
     printf("current JBOD status after failed mounting: %d\n", jbod_error);
     return -1;  
   }
-  //unexpected behavior where, if having jbod_error = JBOD_ALREADY_MOUNTED
-  //and successful jbod mounting using jbod_operation completed
-  //jbod_error would not change to JBOD_NO_ERROR
-  //have to rectify manually?
-  jbod_error = JBOD_NO_ERROR;
   printf("current JBOD status after successful mounting: %d\n", jbod_error);
+  mdadm_mounted = TRUE;
   return 1;
 }
 
 int mdadm_unmount(void) {
   //Complete your code here
   printf("\ncurrent JBOD status before unmounting: %d\n", jbod_error);
-  if (jbod_error == JBOD_UNMOUNTED || jbod_error == JBOD_ALREADY_UNMOUNTED) {
+  if (!mdadm_mounted) {
     //only need to fill out "op" field since all other fields ignored for mounting
-    printf("current JBOD status after failed unmounting: %d\n", jbod_error);
+    printf("current JBOD status after array already unmounted: %d\n", jbod_error);
     return -1;
   }
   int jbod_op_return =  jbod_operation((uint32_t)(JBOD_UNMOUNT << RESERVED_WIDTH), NULL);
@@ -42,6 +43,7 @@ int mdadm_unmount(void) {
     return -1;  
   }
   printf("current JBOD status after successful unmounting: %d\n", jbod_error);
+  mdadm_mounted = FALSE;
   return 1;
 }
 
@@ -73,7 +75,7 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
     }
     return ZERO_LENGTH_READ;
   }
-  if (jbod_error == JBOD_UNMOUNTED || jbod_error == JBOD_ALREADY_UNMOUNTED) {
+  if (!mdadm_mounted) {
     return ARRAY_UNMOUNTED;
   }
 
