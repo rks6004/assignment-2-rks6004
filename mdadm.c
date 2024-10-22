@@ -114,7 +114,10 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
     int end_disk = disk_locator(end_addr);
     printf("starting at disk: %d and ending at disk: %d\n", start_disk, end_disk);
     int bytes_read = 0;
+    //this tracker will be incremented by the amount of bytes read per block
+    //to serve as a reference of where the the read process "is at" in mem.
     uint32_t addr_tracker = start_addr;
+    //beginning the block-by-block reading
     for (int d = start_disk; d <= end_disk; d++) {
       //only filling out necessary aspects of opcode
       uint32_t seek_disk_code = (d << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH)) 
@@ -123,49 +126,55 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
       //we know that this read will stretch past the same block
       int start_block = block_locator(addr_tracker);
       int end_block;
+      //if this is the last disk to read, only want to read the "leftover" amount of blocks within disk
       if (d == end_disk) {
          end_block = block_locator(end_addr);
       }
+      //this is not the last disk we're reading from- we can read all the blocks on this disk
       else {
         end_block = JBOD_NUM_BLOCKS_PER_DISK - 1;
       }
       printf("\nFor disk: %d, reading from start block: %d to end block: %d\n", d, start_block, end_block);
+      //seeking to the first block within disk that we're reading from
       uint32_t seek_block_code = 
           (start_block << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH))
           + (JBOD_SEEK_TO_BLOCK << RESERVED_WIDTH);
-      jbod_operation(seek_block_code, NULL);
+      if (jbod_operation(seek_block_code, NULL) == -1) {return -4;}
       //increment will be used for TRACKING purposes- JBOD_READ increments block value itself
       //will still have to reference b in order to jump "back" to new disk when necessary
-      //since JBOD_READ will likely throw errors if reading beyond disk
+      //since JBOD_READ will likely throw errors/segfault if reading beyond disk
       for (int b = start_block; b <= end_block; b++) {
         uint32_t read_code = JBOD_READ_BLOCK << RESERVED_WIDTH;
+        //temp buffer to store ALL of the block that we want data from
         uint8_t temp_buffer[256];
         jbod_operation(read_code, temp_buffer);
         //since within block now, now have to know where current address lies IN BLOCK (which byte)
         uint8_t addr_tracker_byte = addr_tracker % JBOD_BLOCK_SIZE;
+        printf("\nAddr tracker byte-addressed: %u\n", addr_tracker_byte);
         //copying memory from where addr lies IN BLOCK
         //for read_len bits
-        uint8_t temp_bytes;
+        int temp_bytes;
         //if within last block, read number of EXCESS bytes to read
         if (b == end_block) {
-          temp_bytes = (end_addr % JBOD_BLOCK_SIZE) - addr_tracker_byte;
+          //don't need to accomodate for addr_tracker_byte
+          //as will be starting block from byte 0 anyways
+          temp_bytes = (end_addr % JBOD_BLOCK_SIZE);
         }
         //otherwise, read till end of block
         else {
-          printf("ELse\n");
           temp_bytes = JBOD_BLOCK_SIZE - addr_tracker_byte;
-          printf("Addr tracker statement: %u", addr_tracker_byte);
         }
-        printf("\nFor block %d, reading %u bytes\n", b, temp_bytes);
+        printf("For block %d, reading %u bytes\n", b, temp_bytes);
         //operation sees temp_bytes being copied from addr_tracker's BLOCK BASED value
         //to read_buf at its "latest" location
         memcpy(read_buf + bytes_read, temp_buffer + addr_tracker_byte, temp_bytes);
-        printf("Addr_tracker was at: %u\n", addr_tracker_byte);
+        printf("Addr_tracker was at: %u\n", addr_tracker);
         printf("Total bytes read before block operation: %d\n", bytes_read);
         printf("Bytes read during block operation: %d\n", temp_bytes);
         addr_tracker += temp_bytes;
         bytes_read += temp_bytes;
         printf("Total bytes read after block operation: %d\n", bytes_read);
+        printf("Addr_tracker after block operation now at: %u\n", addr_tracker);
       }
     }
   }
