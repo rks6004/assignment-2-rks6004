@@ -122,7 +122,7 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
       //only filling out necessary aspects of opcode
       uint32_t seek_disk_code = (d << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH)) 
         + (JBOD_SEEK_TO_DISK << RESERVED_WIDTH); 
-      jbod_operation(seek_disk_code, NULL);
+      if (jbod_operation(seek_disk_code, NULL) == -1) {return -4;}
       //we know that this read will stretch past the same block
       int start_block = block_locator(addr_tracker);
       int end_block;
@@ -158,6 +158,7 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
         if (b == end_block) {
           //don't need to accomodate for addr_tracker_byte
           //as will be starting block from byte 0 anyways
+          printf("this is the last block\n");
           temp_bytes = (end_addr % JBOD_BLOCK_SIZE);
         }
         //otherwise, read till end of block
@@ -168,7 +169,10 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
         //operation sees temp_bytes being copied from addr_tracker's BLOCK BASED value
         //to read_buf at its "latest" location
         memcpy(read_buf + bytes_read, temp_buffer + addr_tracker_byte, temp_bytes);
-        printf("Addr_tracker was at: %u\n", addr_tracker);
+        for (int i = 0; i < sizeof(temp_buffer)/sizeof(uint8_t); i++) {
+          printf("Addr: %u, Byte: %d: %#x\n", addr_tracker + i, i, temp_buffer[i]);
+        }
+        printf("\nAddr_tracker was at: %u\n", addr_tracker);
         printf("Total bytes read before block operation: %d\n", bytes_read);
         printf("Bytes read during block operation: %d\n", temp_bytes);
         addr_tracker += temp_bytes;
