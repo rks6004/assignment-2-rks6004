@@ -152,13 +152,15 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
         }
         //otherwise, read till end of block
         else {
+          printf("ELse\n");
           temp_bytes = JBOD_BLOCK_SIZE - addr_tracker_byte;
+          printf("Addr tracker statement: %u", addr_tracker_byte);
         }
         printf("\nFor block %d, reading %u bytes\n", b, temp_bytes);
         //operation sees temp_bytes being copied from addr_tracker's BLOCK BASED value
         //to read_buf at its "latest" location
         memcpy(read_buf + bytes_read, temp_buffer + addr_tracker_byte, temp_bytes);
-        // printf("Addr_tracker was at: %u", addr_tracker);
+        printf("Addr_tracker was at: %u\n", addr_tracker_byte);
         printf("Total bytes read before block operation: %d\n", bytes_read);
         printf("Bytes read during block operation: %d\n", temp_bytes);
         addr_tracker += temp_bytes;
