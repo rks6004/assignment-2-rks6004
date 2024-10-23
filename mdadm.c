@@ -87,18 +87,14 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
   if ((start_addr % JBOD_BLOCK_SIZE) + read_len < JBOD_BLOCK_SIZE) {
     printf("\nwe are NOT reading beyond a single block.\n");
     //opcode for seeking disk, referencing disk_locator helpful func
-    uint32_t seek_disk_code = (disk_locator(start_addr) 
-      << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH)) 
-      + (JBOD_SEEK_TO_DISK << RESERVED_WIDTH); 
+    uint32_t seek_disk_code = disk_locator(start_addr)
+      + (JBOD_SEEK_TO_DISK << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH)); 
     if (jbod_operation(seek_disk_code, NULL) == -1) {return -4;}
     //opcode for seeking disk, referencing block_locator helpful func
-    uint32_t seek_block_code = (block_locator(start_addr) 
-      << (sizeof(seek_block_code)*8 - DISK_ID_WIDTH - BLOCK_ID_WIDTH)) 
-      + (JBOD_SEEK_TO_DISK << RESERVED_WIDTH); 
+    uint32_t seek_block_code = (block_locator(start_addr) << DISK_ID_WIDTH) 
+      + (JBOD_SEEK_TO_BLOCK << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH)); 
     if (jbod_operation(seek_block_code, NULL) == -4) {return -4;}
-    uint32_t read_code = JBOD_READ_BLOCK << RESERVED_WIDTH;
-    //would this work?
-    //type asserts 1 byte, yet size declaration states 256 bytes
+    uint32_t read_code = JBOD_READ_BLOCK << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH);
     uint8_t temp_buffer[256];
     if (jbod_operation(read_code, temp_buffer) == -4) {return -4;}
     //copying memory from where start_addr lies IN BLOCK
@@ -121,9 +117,10 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
     for (int d = start_disk; d <= end_disk; d++) {
       printf("\nseeking to disk: %d\n", d);
       //only filling out necessary aspects of opcode
-      uint32_t seek_disk_code = (d << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH)) 
-        + (JBOD_SEEK_TO_DISK << RESERVED_WIDTH); 
-      if (jbod_operation(seek_disk_code, NULL) == -1) {return -4;}
+     uint32_t seek_disk_code = d
+      + (JBOD_SEEK_TO_DISK << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH));
+      int result = jbod_operation(seek_disk_code, NULL);
+      printf("jbod disk seek: %d\n", result);
       //we know that this read will stretch past the same block
       int start_block = block_locator(addr_tracker);
       int end_block;
@@ -137,15 +134,15 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
       }
       printf("\nFor disk: %d, reading from start block: %d to end block: %d\n", d, start_block, end_block);
       //seeking to the first block within disk that we're reading from
-      uint32_t seek_block_code = 
-          (start_block << (sizeof(seek_disk_code)*8 - DISK_ID_WIDTH))
-          + (JBOD_SEEK_TO_BLOCK << RESERVED_WIDTH);
+      uint32_t seek_block_code = (start_block << DISK_ID_WIDTH) 
+        + (JBOD_SEEK_TO_BLOCK << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH));
       if (jbod_operation(seek_block_code, NULL) == -1) {return -4;}
       //increment will be used for TRACKING purposes- JBOD_READ increments block value itself
       //will still have to reference b in order to jump "back" to new disk when necessary
       //since JBOD_READ will likely throw errors/segfault if reading beyond disk
       for (int b = start_block; b <= end_block; b++) {
-        uint32_t read_code = JBOD_READ_BLOCK << RESERVED_WIDTH;
+        uint32_t read_code = JBOD_READ_BLOCK 
+          << (sizeof(uint32_t)*8 - RESERVED_WIDTH - CMD_ID_WIDTH);
         //temp buffer to store ALL of the block that we want data from
         uint8_t temp_buffer[256];
         jbod_operation(read_code, temp_buffer);
