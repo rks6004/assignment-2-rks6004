@@ -24,6 +24,7 @@ int test_read_within_block();
 int test_read_across_blocks();
 int test_read_three_blocks();
 int test_read_across_disks();
+int test_disk_boundary();
 
 /* Utility functions. */
 char *stringify(uint8_t buf[], int length);
@@ -39,7 +40,10 @@ int main(int argc, char *argv[])
   score += test_read_across_blocks();
   score += test_read_three_blocks();
   score += test_read_across_disks();
-
+  score += test_disk_boundary();
+  //maintaing score out of 10 since 
+  //test_read_across_disks is supposed to fail with revised read
+  //test_read_across_disks failing also serves as proof of working revision
   printf("Total score: %d/%d\n", score, 10);
 
   return 0;
@@ -352,6 +356,43 @@ int test_read_across_disks() {
   }
   success = true;
 
+out:
+  mdadm_unmount();
+  if (!success)
+    return 0;
+
+  printf("passed\n");
+  return 2;
+}
+
+/*
+ * HONORS OPTION TESTCASE:
+ * This test ATTEMPTS to read 16 bytes starting at the linear address 983032, which
+ * corresponds to the last 8 bytes of disk 14 and first 8 bytes on disk 15.
+ * mdadm_read() should fail with return code OUT_OF_BOUNDS = -1 as a result of attempting
+ * to read over a disk boundary (as per the README)
+ */
+int test_disk_boundary() {
+  printf("running %s: ", __func__);
+
+  int rc = mdadm_mount();
+  if (rc != 1) {
+    printf("jbod error on mounting fail: %d", jbod_error);
+    printf("failed: mount should succeed on an unmounted system but it failed.\n");
+    return 0;
+  }
+
+  /* Set the contents of JBOD drives to a specific pattern. */
+  jbod_initialize_drives_contents();
+
+  bool success = true;
+  uint8_t out[SIZE];
+  int read_result = mdadm_read(983032, SIZE, out);
+  if (read_result != -1) {
+    success = false;
+    printf("failed: read should fail on a read crossing disk boundaries with error code: -1 but it instead returned: %d.\n", read_result);
+    goto out;
+  }
 out:
   mdadm_unmount();
   if (!success)
