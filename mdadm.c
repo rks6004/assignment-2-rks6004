@@ -64,6 +64,9 @@ int block_locator(uint32_t addr) {
 
 int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
   //Complete your code here
+  uint32_t end_addr = start_addr + read_len;
+  int start_disk = disk_locator(start_addr);
+  int end_disk = disk_locator(end_addr);
   if (start_addr + read_len >= JBOD_TOTAL_ARRAY_SIZE) {
     return OUT_OF_BOUNDS;
   }
@@ -104,10 +107,7 @@ int mdadm_read(uint32_t start_addr, uint32_t read_len, uint8_t *read_buf)  {
   //reading beyond a single block
   else {
     printf("\nwe are reading beyond a single block.");
-    uint32_t end_addr = start_addr + read_len;
     printf("\nstart address: %u, end address calculated as: %u\n", start_addr, end_addr);
-    int start_disk = disk_locator(start_addr);
-    int end_disk = disk_locator(end_addr);
     printf("starting at disk: %d and ending at disk: %d\n", start_disk, end_disk);
     int bytes_read = 0;
     //this tracker will be incremented by the amount of bytes read per block
